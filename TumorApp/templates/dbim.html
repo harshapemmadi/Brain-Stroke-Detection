@@ -1,0 +1,570 @@
+{% extends 'base.html' %}
+{% block title %}DBIM Segmentation – NeuroScan Pro{% endblock %}
+{% block extra_style %}
+.seg-header {
+  background:linear-gradient(135deg,rgba(167,139,250,.06),rgba(56,189,248,.04));
+  border-bottom:1px solid var(--border);padding:2rem 0;
+}
+.seg-title{font-family:var(--font-display);font-size:1.6rem;font-weight:800;letter-spacing:-.03em;}
+.upload-panel{max-width:640px;margin:0 auto;}
+.results-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+.results-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;}
+@media(max-width:1100px){.results-grid-4{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.results-grid-4,.results-grid-2{grid-template-columns:1fr;}}
+.param-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0;border-bottom:1px solid var(--border);}
+.param-row:last-child{border-bottom:none;}
+.param-name{font-size:13px;color:var(--text2);}
+.param-val{font-family:var(--font-mono);font-size:13px;color:var(--violet);}
+.tumor-badge-big{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--font-display);font-weight:700;font-size:1.1rem;
+  padding:.75rem 1.5rem;border-radius:12px;
+}
+.tumor-yes{background:rgba(251,113,133,.12);color:var(--rose);border:1px solid rgba(251,113,133,.25);}
+.tumor-no{background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.25);}
+.improvement-card{
+  background:linear-gradient(135deg,rgba(167,139,250,.08),rgba(56,189,248,.05));
+  border:1px solid rgba(167,139,250,.2);border-radius:var(--radius-lg);padding:1.5rem;text-align:center;
+}
+.improvement-val{font-family:var(--font-display);font-size:2.5rem;font-weight:800;letter-spacing:-.04em;color:var(--violet);}
+
+/* Side-by-side comparison */
+.compare-section {
+  background:linear-gradient(135deg,rgba(56,189,248,.04),rgba(167,139,250,.04));
+  border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.75rem;
+  margin-bottom:1.5rem;
+}
+.compare-title {
+  font-family:var(--font-display);font-weight:700;font-size:1.1rem;color:var(--text);
+  display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;
+}
+.compare-grid {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
+}
+@media(max-width:900px){.compare-grid{grid-template-columns:1fr;}}
+.compare-img-wrap {
+  display:flex;flex-direction:column;align-items:center;gap:.5rem;
+}
+.compare-label {
+  font-family:var(--font-mono);font-size:11.5px;font-weight:500;
+  padding:4px 12px;border-radius:6px;text-align:center;
+}
+.compare-label.orig  { background:rgba(56,189,248,.1); color:var(--cyan); border:1px solid rgba(56,189,248,.2); }
+.compare-label.otsu  { background:rgba(251,191,36,.1);  color:var(--amber);border:1px solid rgba(251,191,36,.2);  }
+.compare-label.dbim  { background:rgba(167,139,250,.1); color:var(--violet);border:1px solid rgba(167,139,250,.2);}
+.compare-acc-chip {
+  font-family:var(--font-mono);font-size:10.5px;padding:2px 8px;border-radius:4px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="seg-header">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <span class="label-tag">Proposed Method</span>
+        <div class="seg-title">🔴 DBIM Adaptive Segmentation</div>
+        <div style="color:var(--text2);font-size:13.5px;margin-top:.25rem;">Dynamic Background Intensity Modelling · Outperforms OTSU in stroke region detection</div>
+      </div>
+      <a href="{% url 'dashboard' %}" class="btn btn-outline btn-sm">← Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<div style="padding:2.5rem 0;">
+<div class="container">
+
+{% if error %}
+<div class="alert alert-error">⚠️ {{ error }}</div>
+{% endif %}
+
+{% if not orig_b64 %}
+<!-- Upload form -->
+<div class="upload-panel animate-fadeup">
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <div class="card-icon violet">🔬</div>
+      <div><div class="card-title">How DBIM Improves on OTSU</div><div class="card-meta">Adaptive edge-modelling pipeline</div></div>
+    </div>
+    <ol style="padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem;font-size:13.5px;color:var(--text2);">
+      <li>CLAHE (Contrast Limited Adaptive Histogram Equalization) enhancement</li>
+      <li>Adaptive Canny thresholds from gradient mean — not fixed sigma</li>
+      <li>Morphological kernel & iteration counts from image statistics</li>
+      <li>Multiple contour regions ranked by area, colour-coded by significance</li>
+      <li>ML model computes accuracy improvement over OTSU baseline</li>
+    </ol>
+  </div>
+
+  <form method="POST" action="{% url 'dbim_action' %}" enctype="multipart/form-data" data-loading>
+    {% csrf_token %}
+    <div class="card">
+      <label for="dbim-file" style="cursor:pointer;">
+        <div class="upload-zone" id="dbim-drop">
+          <div class="upload-icon">🧬</div>
+          <div class="upload-title">Drop MRI / CT scan here</div>
+          <div class="upload-sub" style="margin-top:.25rem;">or click to browse · PNG, JPG, TIFF supported</div>
+          <input type="file" name="image" id="dbim-file" accept="image/*" required style="display:none;" />
+        </div>
+      </label>
+      <div style="margin-top:1.5rem;">
+        <button type="submit" class="btn btn-violet btn-full">
+          🔴 Run DBIM Segmentation
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% else %}
+<!-- Results -->
+<div class="animate-fadeup">
+
+  <!-- Status row -->
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <span class="badge badge-green">✅ Segmentation Complete</span>
+    {% if has_tumor %}
+    <div class="tumor-badge-big tumor-yes">🔴 Tumor Detected ({{ probability }}%)</div>
+    {% else %}
+    <div class="tumor-badge-big tumor-no">✅ No Tumor ({{ probability }}% probability)</div>
+    {% endif %}
+    <span class="badge badge-violet mono">DBIM: {{ accuracy }}%</span>
+    <span class="badge badge-cyan mono">OTSU ref: {{ otsu_ref_acc }}%</span>
+    {% if improvement > 0 %}
+    <span class="badge badge-green mono">+{{ improvement }}% improvement</span>
+    {% endif %}
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       SIDE-BY-SIDE COMPARISON (Original | Otsu | DBIM)
+  ═══════════════════════════════════════════════ -->
+  <div class="compare-section" style="margin-bottom:1.5rem;">
+    <div class="compare-title">
+      <span style="font-size:20px;">🔍</span>
+      Side-by-Side Comparison
+      <span class="badge badge-violet" style="font-size:11px;">Original · Otsu · DBIM</span>
+    </div>
+    <div class="compare-grid">
+
+      <!-- Original -->
+      <div class="compare-img-wrap">
+        <div class="compare-label orig">📷 Original Image</div>
+        <div class="img-panel" style="width:100%;">
+          <div class="img-panel-header">
+            <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+            <span style="margin-left:4px;">original.png</span>
+          </div>
+          <img src="data:image/png;base64,{{ orig_b64 }}" alt="Original" id="cmp-orig" />
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-align:center;">
+          Raw MRI / CT scan input
+        </div>
+      </div>
+
+      <!-- Otsu Thresholded -->
+      <div class="compare-img-wrap">
+        <div class="compare-label otsu">⬛ Otsu Thresholded</div>
+        <div class="img-panel" style="width:100%;">
+          <div class="img-panel-header">
+            <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+            <span style="margin-left:4px;">otsu_thresh.png</span>
+          </div>
+          <img src="data:image/png;base64,{{ otsu_thresh_b64 }}" alt="Otsu Thresholded" id="cmp-otsu" />
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Baseline method</span>
+          <span class="compare-acc-chip" style="background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.2);">{{ otsu_ref_acc }}% acc</span>
+        </div>
+      </div>
+
+      <!-- DBIM Segmented -->
+      <div class="compare-img-wrap">
+        <div class="compare-label dbim">🔴 DBIM Segmented</div>
+        <div class="img-panel" style="width:100%;border:1px solid rgba(167,139,250,.3);box-shadow:0 0 20px rgba(167,139,250,.15);">
+          <div class="img-panel-header" style="background:rgba(167,139,250,.06);">
+            <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+            <span style="margin-left:4px;color:var(--violet);">dbim_segmented.png</span>
+          </div>
+          <img src="data:image/png;base64,{{ seg_b64 }}" alt="DBIM Segmented" id="cmp-dbim" />
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Proposed method</span>
+          <span class="compare-acc-chip" style="background:rgba(167,139,250,.1);color:var(--violet);border:1px solid rgba(167,139,250,.2);">{{ accuracy }}% acc</span>
+          {% if improvement > 0 %}
+          <span class="compare-acc-chip" style="background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.2);">+{{ improvement }}%</span>
+          {% endif %}
+        </div>
+      </div>
+
+    </div><!-- /compare-grid -->
+  </div><!-- /compare-section -->
+
+  <!-- Four result images (detailed pipeline) -->
+  <div style="margin-bottom:.5rem;">
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem;">Full Pipeline Output</div>
+  </div>
+  <div class="results-grid-4" style="margin-bottom:1.5rem;">
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+          <span style="margin-left:4px;">original.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ orig_b64 }}" alt="Original" />
+      </div>
+      <div style="text-align:center;font-size:11.5px;color:var(--text3);margin-top:.4rem;font-family:var(--font-mono);">Original</div>
+    </div>
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+          <span style="margin-left:4px;">enhanced.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ enh_b64 }}" alt="Enhanced" />
+      </div>
+      <div style="text-align:center;font-size:11.5px;color:var(--text3);margin-top:.4rem;font-family:var(--font-mono);">CLAHE Enhanced</div>
+    </div>
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+          <span style="margin-left:4px;">tumor_roi.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ tumor_b64 }}" alt="Tumor ROI" />
+      </div>
+      <div style="text-align:center;font-size:11.5px;color:var(--text3);margin-top:.4rem;font-family:var(--font-mono);">Tumor ROI</div>
+    </div>
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+          <span style="margin-left:4px;">segmented.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ seg_b64 }}" alt="Segmented" />
+      </div>
+      <div style="text-align:center;font-size:11.5px;color:var(--text3);margin-top:.4rem;font-family:var(--font-mono);">DBIM Contours</div>
+    </div>
+  </div>
+
+  <!-- Edge map -->
+  <div style="max-width:256px;margin-bottom:1.5rem;">
+    <div class="img-panel">
+      <div class="img-panel-header">
+        <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green2"></div>
+        <span style="margin-left:4px;">canny_edges.png</span>
+      </div>
+      <img src="data:image/png;base64,{{ edges_b64 }}" alt="Canny Edges" style="filter:invert(1);" />
+    </div>
+    <div style="text-align:center;font-size:11.5px;color:var(--text3);margin-top:.4rem;font-family:var(--font-mono);">Canny Edge Map</div>
+  </div>
+
+  <!-- Accuracy comparison -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;" class="acc-grid">
+    <div class="card">
+      <div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em;">DBIM Accuracy</div>
+      <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--violet);" id="dbim-acc">{{ accuracy }}%</div>
+      <div class="meter-track" style="margin-top:.75rem;height:8px;"><div class="meter-fill violet" id="dbim-bar" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em;">OTSU Reference</div>
+      <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--cyan);">{{ otsu_ref_acc }}%</div>
+      <div class="meter-track" style="margin-top:.75rem;height:8px;"><div class="meter-fill" id="otsu-bar" style="width:0%"></div></div>
+    </div>
+    <div class="improvement-card">
+      <div style="font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em;">Improvement</div>
+      <div class="improvement-val">{% if improvement > 0 %}+{% endif %}{{ improvement }}%</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:.5rem;">DBIM over OTSU</div>
+    </div>
+  </div>
+  <style>.acc-grid{@media(max-width:700px){grid-template-columns:1fr!important;}}</style>
+
+  <!-- Parameters -->
+  <div class="grid-2" style="margin-bottom:1.5rem;">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon violet">⚙️</div>
+        <div><div class="card-title">DBIM Adaptive Parameters</div><div class="card-meta">Derived from image statistics — no hardcoded values</div></div>
+      </div>
+      <div class="param-row"><span class="param-name">Canny Low Threshold</span><span class="param-val">{{ canny_lo }}</span></div>
+      <div class="param-row"><span class="param-name">Canny High Threshold</span><span class="param-val">{{ canny_hi }}</span></div>
+      <div class="param-row"><span class="param-name">Binary Threshold</span><span class="param-val">{{ dbim_thresh }}</span></div>
+      <div class="param-row"><span class="param-name">Erosion Iterations</span><span class="param-val">{{ erode_iters }}</span></div>
+      <div class="param-row"><span class="param-name">Dilation Iterations</span><span class="param-val">{{ dilate_iters }}</span></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon cyan">📐</div>
+        <div><div class="card-title">Image Statistics</div><div class="card-meta">Used to derive all parameters above</div></div>
+      </div>
+      <div class="param-row"><span class="param-name">Mean Intensity</span><span class="param-val" style="color:var(--cyan);">{{ img_mean }}</span></div>
+      <div class="param-row"><span class="param-name">Std Deviation</span><span class="param-val" style="color:var(--cyan);">{{ img_std }}</span></div>
+      <div class="param-row"><span class="param-name">Gradient Mean</span><span class="param-val" style="color:var(--cyan);">{{ gradient_mean }}</span></div>
+      <div class="param-row"><span class="param-name">Regions Detected</span><span class="param-val" style="color:var(--cyan);">{{ bbox_count }}</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+    <a href="{% url 'dbim' %}" class="btn btn-outline">🔄 Analyze Another</a>
+    <a href="{% url 'otsu' %}" class="btn btn-outline">🔵 Run OTSU</a>
+    <a href="{% url 'accuracy' %}" class="btn btn-primary">📊 View Full Report →</a>
+    <button onclick="downloadPDF()" style="background:rgba(52,211,153,.15);color:#34d399;border:1px solid rgba(52,211,153,.35);padding:.55rem 1.25rem;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">📄 Download PDF Report</button>
+    <button onclick="showTumourRegion()" style="background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.35);padding:.55rem 1.25rem;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;">🟥 Show Tumour Region</button>
+  </div>
+</div>
+
+<!-- Tumour Region Modal -->
+<div id="tumour-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);align-items:center;justify-content:center;">
+  <div style="background:#0d1524;border:1px solid rgba(56,189,248,.25);border-radius:20px;padding:1.5rem;max-width:680px;width:95%;position:relative;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:#e2e8f0;">🟥 Tumour Region Highlights</div>
+      <button onclick="closeTumourModal()" style="background:rgba(255,255,255,.08);border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div style="font-size:12.5px;color:#94a3b8;margin-bottom:1rem;">
+      Red boxes indicate detected tumour regions. <span style="color:#fb7185;font-family:'DM Mono',monospace;">{{ bbox_count }} region(s) detected.</span>
+    </div>
+    <canvas id="tumour-canvas" style="width:100%;border-radius:10px;display:block;border:1px solid rgba(56,189,248,.12);"></canvas>
+    <div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;">
+      {% for b in bbox_list %}
+      <span style="font-family:'DM Mono',monospace;font-size:11px;color:#fb7185;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.2);padding:3px 9px;border-radius:6px;">
+        Region {{ forloop.counter }}: {{ b.w }}×{{ b.h }}px @ ({{ b.x }},{{ b.y }})
+      </span>
+      {% endfor %}
+    </div>
+    <div style="margin-top:1rem;text-align:right;">
+      <button onclick="closeTumourModal()" style="background:rgba(56,189,248,.1);color:#38bdf8;border:1px solid rgba(56,189,248,.2);padding:.45rem 1.1rem;border-radius:8px;font-size:13px;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+{% if orig_b64 %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const db = document.getElementById('dbim-bar');
+    const ob = document.getElementById('otsu-bar');
+    if (db) db.style.width = '{{ accuracy }}%';
+    if (ob) ob.style.width = '{{ otsu_ref_acc }}%';
+  }, 300);
+});
+
+/* ══════════════════════════════════════════════════════════
+   PDF REPORT — with side-by-side comparison of 3 images
+══════════════════════════════════════════════════════════ */
+async function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210, margin = 15;
+
+  // ── Header band ──────────────────────────────────────────
+  doc.setFillColor(6, 11, 20);
+  doc.rect(0, 0, W, 42, 'F');
+  // Accent line
+  doc.setFillColor(167, 139, 250);
+  doc.rect(0, 0, W, 2, 'F');
+
+  doc.setTextColor(167, 139, 250);
+  doc.setFontSize(22); doc.setFont('helvetica','bold');
+  doc.text('NeuroScan Pro', margin, 18);
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text('DBIM Segmentation Report', margin, 27);
+  doc.text('Generated: ' + new Date().toLocaleString(), margin, 34);
+
+  // Result ID top-right
+  doc.setFontSize(9);
+  doc.text('Report #{{ result_id }}', W - margin, 18, {align:'right'});
+
+  // ── Tumor Status Badge ────────────────────────────────────
+  const hasTumor = {{ has_tumor|yesno:"true,false" }};
+  doc.setFillColor(hasTumor ? 251 : 52, hasTumor ? 113 : 211, hasTumor ? 133 : 153);
+  doc.roundedRect(margin, 50, 85, 12, 3, 3, 'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
+  doc.text(hasTumor ? '🔴 Tumor Detected' : '✅ No Tumor Detected', margin + 4, 58.5);
+
+  // Probability chip
+  doc.setFillColor(30, 30, 50);
+  doc.roundedRect(margin + 90, 50, 55, 12, 3, 3, 'F');
+  doc.setTextColor(167, 139, 250); doc.setFontSize(10);
+  doc.text('Probability: {{ probability }}%', margin + 93, 58.5);
+
+  // ── Metrics Table ──────────────────────────────────────────
+  let y = 72;
+  doc.setTextColor(30, 30, 30); doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text('Segmentation Metrics', margin, y); y += 3;
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(margin, y, W - margin, y); y += 9;
+
+  const metrics = [
+    ['DBIM Accuracy',       '{{ accuracy }}%',      true],
+    ['OTSU Reference',      '{{ otsu_ref_acc }}%',   false],
+    ['Improvement (DBIM)',  '+{{ improvement }}%',   true],
+    ['Tumor Probability',   '{{ probability }}%',    false],
+    ['Canny Low Threshold', '{{ canny_lo }}',        false],
+    ['Canny High Threshold','{{ canny_hi }}',        false],
+    ['Regions Detected',    '{{ bbox_count }}',      false],
+    ['Mean Intensity',      '{{ img_mean }}',        false],
+    ['Gradient Mean',       '{{ gradient_mean }}',   false],
+  ];
+
+  doc.setFontSize(10);
+  metrics.forEach(([k, v, highlight], i) => {
+    const rowY = y + i * 9;
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 247, 250);
+      doc.rect(margin, rowY - 5, W - margin * 2, 9, 'F');
+    }
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80);
+    doc.text(k, margin + 2, rowY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(highlight ? 100 : 30, highlight ? 60 : 30, highlight ? 160 : 30);
+    doc.text(String(v), W - margin - 2, rowY, {align:'right'});
+  });
+  y += metrics.length * 9 + 6;
+
+  // ── Side-by-Side Comparison ────────────────────────────────
+  doc.setDrawColor(180, 180, 200); doc.setLineWidth(0.3);
+  doc.line(margin, y, W - margin, y); y += 7;
+
+  doc.setTextColor(30, 30, 30); doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+  doc.text('Side-by-Side Comparison', margin, y); y += 6;
+
+  // 3 images: Original | Otsu Thresholded | DBIM Segmented
+  const imgW = (W - margin * 2 - 8) / 3;  // ~55mm each with 4mm gap
+  const imgH = imgW;
+  const imgY = y + 10;
+
+  const labels = ['Original Image', 'Otsu Thresholded', 'DBIM Segmented'];
+  const imgIds = ['cmp-orig', 'cmp-otsu', 'cmp-dbim'];
+  const accs   = ['—', '{{ otsu_ref_acc }}%', '{{ accuracy }}%'];
+  const labelColors = [[56,189,248], [251,191,36], [167,139,250]];
+
+  for (let i = 0; i < 3; i++) {
+    const x = margin + i * (imgW + 4);
+
+    // Label background
+    doc.setFillColor(...labelColors[i], 0.15);
+    doc.setFillColor(
+      Math.min(255, labelColors[i][0] * 0.15 + 230),
+      Math.min(255, labelColors[i][1] * 0.15 + 230),
+      Math.min(255, labelColors[i][2] * 0.15 + 230)
+    );
+    doc.roundedRect(x, y, imgW, 7, 1, 1, 'F');
+    doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.setTextColor(
+      labelColors[i][0] > 100 ? Math.min(labelColors[i][0], 180) : 80,
+      labelColors[i][1] > 100 ? Math.min(labelColors[i][1], 140) : 60,
+      labelColors[i][2] > 100 ? Math.min(labelColors[i][2], 200) : 160
+    );
+    doc.text(labels[i], x + imgW/2, y + 5, {align:'center'});
+
+    // Image
+    try {
+      const imgEl = document.getElementById(imgIds[i]);
+      if (imgEl && imgEl.src) {
+        // Border
+        doc.setDrawColor(180, 180, 200); doc.setLineWidth(0.3);
+        doc.rect(x, imgY, imgW, imgH);
+        doc.addImage(imgEl.src, 'PNG', x, imgY, imgW, imgH);
+      }
+    } catch(e) {}
+
+    // Accuracy chip below image
+    if (accs[i] !== '—') {
+      doc.setFillColor(240, 240, 255);
+      doc.roundedRect(x, imgY + imgH + 1, imgW, 6, 1, 1, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica','bold');
+      doc.setTextColor(80, 60, 160);
+      doc.text('Accuracy: ' + accs[i], x + imgW/2, imgY + imgH + 5, {align:'center'});
+    } else {
+      doc.setFillColor(240, 248, 255);
+      doc.roundedRect(x, imgY + imgH + 1, imgW, 6, 1, 1, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      doc.setTextColor(100, 100, 130);
+      doc.text('Input', x + imgW/2, imgY + imgH + 5, {align:'center'});
+    }
+  }
+
+  y = imgY + imgH + 10;
+
+  // ── Improvement annotation ─────────────────────────────────
+  const impY = y + 2;
+  doc.setFillColor(52, 211, 153, 0.1);
+  doc.setFillColor(230, 255, 245);
+  doc.roundedRect(margin, impY, W - margin*2, 10, 2, 2, 'F');
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.setTextColor(20, 120, 80);
+  doc.text(
+    'DBIM outperforms OTSU by +{{ improvement }}%  |  Tumor: ' + (hasTumor ? 'Detected' : 'Not Detected') + '  |  Regions: {{ bbox_count }}',
+    W/2, impY + 6.5, {align:'center'}
+  );
+
+  // ── Footer ─────────────────────────────────────────────────
+  doc.setFillColor(240, 244, 248);
+  doc.rect(0, 277, W, 20, 'F');
+  doc.setFontSize(8); doc.setTextColor(148, 163, 184); doc.setFont('helvetica','normal');
+  doc.text('NeuroScan Pro · ML-Powered Brain Tumor Segmentation · Confidential Medical Report', W/2, 287, {align:'center'});
+  doc.text('Page 1 of 1', W - margin, 287, {align:'right'});
+
+  doc.save('DBIM_Report_{{ result_id }}.pdf');
+}
+
+/* ── Tumour Region Modal ── */
+const bboxData = {{ bbox_info|safe }};
+const origBase64 = '{{ orig_b64 }}';
+
+function showTumourRegion() {
+  const modal = document.getElementById('tumour-modal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  const canvas = document.getElementById('tumour-canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = function() {
+    canvas.width  = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+    bboxData.forEach((b, i) => {
+      ctx.fillStyle = 'rgba(251, 113, 133, 0.12)';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#fb7185';
+      ctx.lineWidth = Math.max(2, Math.round(img.naturalWidth / 200));
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      const cs = Math.min(12, b.w / 4, b.h / 4);
+      ctx.strokeStyle = '#ff3860';
+      ctx.lineWidth = ctx.lineWidth + 1;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y + cs); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x + cs, b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x + b.w - cs, b.y); ctx.lineTo(b.x + b.w, b.y); ctx.lineTo(b.x + b.w, b.y + cs); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x, b.y + b.h - cs); ctx.lineTo(b.x, b.y + b.h); ctx.lineTo(b.x + cs, b.y + b.h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x + b.w - cs, b.y + b.h); ctx.lineTo(b.x + b.w, b.y + b.h); ctx.lineTo(b.x + b.w, b.y + b.h - cs); ctx.stroke();
+      const label = 'Region ' + (i + 1);
+      const fontSize = Math.max(10, Math.round(img.naturalWidth / 50));
+      ctx.font = 'bold ' + fontSize + 'px monospace';
+      const tw = ctx.measureText(label).width;
+      const bpad = 4;
+      const bx = b.x, by = b.y - fontSize - bpad * 2 < 0 ? b.y + 2 : b.y - fontSize - bpad * 2;
+      ctx.fillStyle = '#fb7185';
+      ctx.fillRect(bx, by, tw + bpad * 2 + 2, fontSize + bpad * 2);
+      ctx.fillStyle = '#0d1524';
+      ctx.fillText(label, bx + bpad + 1, by + fontSize + bpad - 1);
+    });
+  };
+  img.src = 'data:image/png;base64,' + origBase64;
+}
+
+function closeTumourModal() {
+  document.getElementById('tumour-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.getElementById('tumour-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTumourModal();
+});
+</script>
+{% endif %}
+{% endblock %}

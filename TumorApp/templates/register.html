@@ -1,0 +1,624 @@
+{% extends 'base.html' %}
+{% block title %}Register – NeuroScan Pro{% endblock %}
+{% block extra_style %}
+.auth-wrap {
+  min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:3rem 1rem;
+}
+.auth-card {
+  width:100%;max-width:560px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:2.5rem;position:relative;
+}
+.auth-card::before {
+  content:'';position:absolute;top:-1px;left:20%;right:20%;height:2px;
+  background:linear-gradient(90deg,var(--violet),var(--cyan));border-radius:0 0 4px 4px;
+}
+.auth-icon {
+  width:64px;height:64px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(56,189,248,.2));
+  border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;
+  font-size:28px;margin:0 auto 1rem;
+}
+.auth-title{font-family:var(--font-display);font-size:1.6rem;font-weight:800;letter-spacing:-.03em;text-align:center;}
+.auth-sub{font-size:13.5px;color:var(--text2);margin-top:.3rem;text-align:center;margin-bottom:1.5rem;}
+.input-group{position:relative;}
+.input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;z-index:1;}
+.input-group .form-input{padding-left:40px;}
+.input-group .form-input.has-toggle{padding-right:44px;}
+.pw-toggle{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:transparent;border:none;cursor:pointer;color:var(--text3);font-size:16px;
+  display:flex;align-items:center;justify-content:center;padding:2px;transition:color .2s;z-index:2;
+}
+.pw-toggle:hover{color:var(--cyan);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:540px){.form-row{grid-template-columns:1fr;}}
+.auth-footer{text-align:center;margin-top:1.5rem;font-size:13.5px;color:var(--text2);}
+.auth-footer a{color:var(--cyan);text-decoration:none;}
+.success-card{text-align:center;padding:2rem 0;}
+.success-icon{font-size:3.5rem;margin-bottom:1rem;}
+
+/* Password strength meter */
+.pw-strength{margin-top:8px;}
+.pw-strength-bar{height:4px;border-radius:999px;background:var(--bg3);overflow:hidden;margin-bottom:6px;}
+.pw-strength-fill{height:100%;border-radius:999px;transition:width .3s,background .3s;width:0%;}
+.pw-requirements{display:flex;flex-direction:column;gap:3px;}
+.pw-req{font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:5px;transition:color .2s;}
+.pw-req.met{color:var(--green);}
+.pw-req.unmet{color:var(--text3);}
+.pw-req::before{content:'○';font-size:10px;}
+.pw-req.met::before{content:'✓';color:var(--green);}
+
+/* Country phone selector */
+.phone-wrap{display:flex;gap:0;}
+.country-select-wrap{position:relative;flex-shrink:0;}
+.country-trigger{
+  height:42px;padding:0 10px 0 8px;
+  background:var(--bg2);border:1px solid var(--border);border-right:none;
+  border-radius:10px 0 0 10px;cursor:pointer;display:flex;align-items:center;gap:5px;
+  font-size:13px;color:var(--text);min-width:100px;transition:border-color .2s;
+  outline:none;white-space:nowrap;
+}
+.country-trigger:focus,.country-trigger:hover{border-color:var(--cyan);}
+.country-trigger .flag{font-size:16px;}
+.country-trigger .dialcode{font-family:var(--font-mono);font-size:12px;color:var(--text2);}
+.country-dropdown{
+  position:absolute;top:calc(100% + 4px);left:0;width:280px;
+  background:var(--surface);border:1px solid var(--border2);border-radius:12px;
+  box-shadow:0 12px 40px rgba(0,0,0,.4);z-index:9999;display:none;overflow:hidden;
+}
+.country-dropdown.open{display:flex;flex-direction:column;}
+.country-search-wrap{padding:8px;border-bottom:1px solid var(--border);}
+.country-search{
+  width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:8px 12px;color:var(--text);font-size:13px;outline:none;
+}
+.country-search:focus{border-color:var(--cyan);}
+.country-list{max-height:220px;overflow-y:auto;}
+.country-item{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;
+  font-size:13px;color:var(--text2);transition:background .15s;
+}
+.country-item:hover{background:rgba(56,189,248,.08);color:var(--text);}
+.country-item.selected{background:rgba(56,189,248,.1);color:var(--cyan);}
+.country-item .ci-flag{font-size:16px;flex-shrink:0;}
+.country-item .ci-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.country-item .ci-code{font-family:var(--font-mono);font-size:11px;color:var(--text3);flex-shrink:0;}
+.phone-number-input{
+  flex:1;background:var(--bg2);border:1px solid var(--border);border-left:none;
+  border-radius:0 10px 10px 0;padding:11px 14px;color:var(--text);
+  font-family:var(--font-body);font-size:14px;outline:none;transition:all .2s;
+}
+.phone-number-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(56,189,248,.12);}
+.phone-number-input::placeholder{color:var(--text3);}
+.phone-number-input.error{border-color:var(--rose);}
+.phone-number-input.success{border-color:var(--green);}
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card animate-fadeup">
+    {% if success %}
+    <div class="success-card">
+      <div class="success-icon">✅</div>
+      <div class="auth-title" style="margin-bottom:.5rem;">Account Created!</div>
+      <div class="auth-sub" style="margin-bottom:1.5rem;">Welcome, <strong style="color:var(--cyan);">{{ registered_name }}</strong>. You can now sign in.</div>
+      <a href="{% url 'login' %}" class="btn btn-primary btn-full">Go to Sign In →</a>
+    </div>
+    {% else %}
+    <div style="text-align:center;">
+      <div class="auth-icon">🧬</div>
+      <div class="auth-title">Create Account</div>
+      <div class="auth-sub">Join NeuroScan Pro — free, no credit card required</div>
+    </div>
+
+    {% if errors and errors.general %}
+    <div class="alert alert-error">⚠️ {{ errors.general }}</div>
+    {% endif %}
+
+    <form method="POST" action="{% url 'register_action' %}" id="reg-form">
+      {% csrf_token %}
+
+      <!-- Username -->
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <div class="input-group">
+          <span class="input-icon">👤</span>
+          <input type="text" name="username" id="id_username"
+                 class="form-input {% if errors.username %}error{% endif %}"
+                 placeholder="john_doe" value="{{ form_data.username|default:'' }}"
+                 autocomplete="username" required />
+        </div>
+        {% if errors.username %}
+        <div class="form-error" id="username-err">⚠️ {{ errors.username }}</div>
+        {% else %}
+        <div class="form-error" id="username-err" style="display:none;"></div>
+        {% endif %}
+        <div class="form-success-msg" id="username-ok" style="display:none;">✓ Username is available</div>
+      </div>
+
+      <!-- Password -->
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <div class="input-group">
+          <span class="input-icon">🔑</span>
+          <input type="password" name="password" id="id_password"
+                 class="form-input has-toggle {% if errors.password %}error{% endif %}"
+                 placeholder="••••••••" autocomplete="new-password" required />
+          <button type="button" class="pw-toggle" id="pw-toggle-1" title="Show/hide password">
+            <span id="pw-eye-1">👁️</span>
+          </button>
+        </div>
+        {% if errors.password %}
+        <div class="form-error" id="pw-err">⚠️ {{ errors.password }}</div>
+        {% endif %}
+        <!-- Strength meter & requirements -->
+        <div class="pw-strength" id="pw-strength-wrap" style="display:none;">
+          <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-strength-fill"></div></div>
+          <div class="pw-requirements">
+            <div class="pw-req unmet" id="req-len">At least 8 characters</div>
+            <div class="pw-req unmet" id="req-letter">At least one letter (A-Z)</div>
+            <div class="pw-req unmet" id="req-num">At least one number (0-9)</div>
+            <div class="pw-req unmet" id="req-special">At least one special character (!@#$…)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input type="password" name="confirm_password" id="id_confirm"
+                 class="form-input has-toggle {% if errors.confirm_password %}error{% endif %}"
+                 placeholder="••••••••" autocomplete="new-password" required />
+          <button type="button" class="pw-toggle" id="pw-toggle-2" title="Show/hide password">
+            <span id="pw-eye-2">👁️</span>
+          </button>
+        </div>
+        {% if errors.confirm_password %}
+        <div class="form-error" id="confirm-err">⚠️ {{ errors.confirm_password }}</div>
+        {% else %}
+        <div class="form-error" id="confirm-err" style="display:none;"></div>
+        {% endif %}
+        <div class="form-success-msg" id="confirm-ok" style="display:none;">✓ Passwords match</div>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label class="form-label">Email Address *</label>
+        <div class="input-group">
+          <span class="input-icon">📧</span>
+          <input type="email" name="email" id="id_email"
+                 class="form-input {% if errors.email %}error{% endif %}"
+                 placeholder="john@gmail.com" value="{{ form_data.email|default:'' }}"
+                 autocomplete="email" required />
+        </div>
+        {% if errors.email %}
+        <div class="form-error" id="email-err">⚠️ {{ errors.email }}</div>
+        {% else %}
+        <div class="form-error" id="email-err" style="display:none;"></div>
+        {% endif %}
+        <div class="form-success-msg" id="email-ok" style="display:none;">✓ Email is available</div>
+      </div>
+
+      <!-- Phone Number with Country Code -->
+      <div class="form-group">
+        <label class="form-label">Phone Number *</label>
+        <div class="phone-wrap">
+          <div class="country-select-wrap">
+            <button type="button" class="country-trigger" id="country-trigger">
+              <span class="flag" id="sel-flag">🇮🇳</span>
+              <span class="dialcode" id="sel-dial">+91</span>
+              <span style="font-size:10px;margin-left:2px;">▼</span>
+            </button>
+            <div class="country-dropdown" id="country-dropdown">
+              <div class="country-search-wrap">
+                <input type="text" class="country-search" id="country-search" placeholder="Search country…" />
+              </div>
+              <div class="country-list" id="country-list"></div>
+            </div>
+          </div>
+          <input type="hidden" name="country_code" id="country_code" value="+91" />
+          <input type="hidden" name="country_iso"  id="country_iso"  value="IN" />
+          <input type="text" name="phone_number" id="id_phone"
+                 class="phone-number-input {% if errors.contact %}error{% endif %}"
+                 placeholder="98765 43210" value="" maxlength="15"
+                 autocomplete="tel" />
+          <!-- Full contact stored here -->
+          <input type="hidden" name="contact" id="id_contact" value="{{ form_data.contact|default:'' }}" />
+        </div>
+        {% if errors.contact %}
+        <div class="form-error" id="phone-err">⚠️ {{ errors.contact }}</div>
+        {% else %}
+        <div class="form-error" id="phone-err" style="display:none;"></div>
+        {% endif %}
+        <div class="form-success-msg" id="phone-ok" style="display:none;">✓ Phone number is available</div>
+      </div>
+
+      <!-- Address -->
+      <div class="form-group">
+        <label class="form-label">Address / Location</label>
+        <div class="input-group">
+          <span class="input-icon">📍</span>
+          <input type="text" name="address" class="form-input"
+                 placeholder="City, Country" value="{{ form_data.address|default:'' }}" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" style="margin-top:.5rem;" id="submit-btn">
+        Create Account →
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="{% url 'login' %}">Sign in</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* ═══════════════════════════════════════════════════
+   COUNTRY PHONE CODE DATA
+═══════════════════════════════════════════════════ */
+const COUNTRIES = [
+  {iso:'IN',name:'India',flag:'🇮🇳',dial:'+91',len:[10]},
+  {iso:'US',name:'United States',flag:'🇺🇸',dial:'+1',len:[10]},
+  {iso:'GB',name:'United Kingdom',flag:'🇬🇧',dial:'+44',len:[10]},
+  {iso:'AU',name:'Australia',flag:'🇦🇺',dial:'+61',len:[9]},
+  {iso:'CA',name:'Canada',flag:'🇨🇦',dial:'+1',len:[10]},
+  {iso:'DE',name:'Germany',flag:'🇩🇪',dial:'+49',len:[10,11]},
+  {iso:'FR',name:'France',flag:'🇫🇷',dial:'+33',len:[9]},
+  {iso:'JP',name:'Japan',flag:'🇯🇵',dial:'+81',len:[10,11]},
+  {iso:'CN',name:'China',flag:'🇨🇳',dial:'+86',len:[11]},
+  {iso:'BR',name:'Brazil',flag:'🇧🇷',dial:'+55',len:[10,11]},
+  {iso:'ZA',name:'South Africa',flag:'🇿🇦',dial:'+27',len:[9]},
+  {iso:'NG',name:'Nigeria',flag:'🇳🇬',dial:'+234',len:[10]},
+  {iso:'PK',name:'Pakistan',flag:'🇵🇰',dial:'+92',len:[10]},
+  {iso:'BD',name:'Bangladesh',flag:'🇧🇩',dial:'+880',len:[10]},
+  {iso:'RU',name:'Russia',flag:'🇷🇺',dial:'+7',len:[10]},
+  {iso:'IT',name:'Italy',flag:'🇮🇹',dial:'+39',len:[9,10]},
+  {iso:'ES',name:'Spain',flag:'🇪🇸',dial:'+34',len:[9]},
+  {iso:'MX',name:'Mexico',flag:'🇲🇽',dial:'+52',len:[10]},
+  {iso:'ID',name:'Indonesia',flag:'🇮🇩',dial:'+62',len:[9,10,11,12]},
+  {iso:'PH',name:'Philippines',flag:'🇵🇭',dial:'+63',len:[10]},
+  {iso:'SG',name:'Singapore',flag:'🇸🇬',dial:'+65',len:[8]},
+  {iso:'MY',name:'Malaysia',flag:'🇲🇾',dial:'+60',len:[9,10]},
+  {iso:'TH',name:'Thailand',flag:'🇹🇭',dial:'+66',len:[9]},
+  {iso:'NL',name:'Netherlands',flag:'🇳🇱',dial:'+31',len:[9]},
+  {iso:'SE',name:'Sweden',flag:'🇸🇪',dial:'+46',len:[7,8,9]},
+  {iso:'NO',name:'Norway',flag:'🇳🇴',dial:'+47',len:[8]},
+  {iso:'KR',name:'South Korea',flag:'🇰🇷',dial:'+82',len:[9,10]},
+  {iso:'AR',name:'Argentina',flag:'🇦🇷',dial:'+54',len:[10]},
+  {iso:'CO',name:'Colombia',flag:'🇨🇴',dial:'+57',len:[10]},
+  {iso:'EG',name:'Egypt',flag:'🇪🇬',dial:'+20',len:[10]},
+  {iso:'SA',name:'Saudi Arabia',flag:'🇸🇦',dial:'+966',len:[9]},
+  {iso:'AE',name:'UAE',flag:'🇦🇪',dial:'+971',len:[9]},
+  {iso:'TR',name:'Turkey',flag:'🇹🇷',dial:'+90',len:[10]},
+  {iso:'IR',name:'Iran',flag:'🇮🇷',dial:'+98',len:[10]},
+  {iso:'IQ',name:'Iraq',flag:'🇮🇶',dial:'+964',len:[10]},
+  {iso:'PL',name:'Poland',flag:'🇵🇱',dial:'+48',len:[9]},
+  {iso:'UA',name:'Ukraine',flag:'🇺🇦',dial:'+380',len:[9]},
+  {iso:'KE',name:'Kenya',flag:'🇰🇪',dial:'+254',len:[9]},
+  {iso:'GH',name:'Ghana',flag:'🇬🇭',dial:'+233',len:[9]},
+  {iso:'NZ',name:'New Zealand',flag:'🇳🇿',dial:'+64',len:[8,9]},
+  {iso:'CH',name:'Switzerland',flag:'🇨🇭',dial:'+41',len:[9]},
+  {iso:'BE',name:'Belgium',flag:'🇧🇪',dial:'+32',len:[9]},
+  {iso:'AT',name:'Austria',flag:'🇦🇹',dial:'+43',len:[10,11]},
+  {iso:'PT',name:'Portugal',flag:'🇵🇹',dial:'+351',len:[9]},
+  {iso:'GR',name:'Greece',flag:'🇬🇷',dial:'+30',len:[10]},
+  {iso:'CZ',name:'Czech Republic',flag:'🇨🇿',dial:'+420',len:[9]},
+  {iso:'HU',name:'Hungary',flag:'🇭🇺',dial:'+36',len:[9]},
+  {iso:'RO',name:'Romania',flag:'🇷🇴',dial:'+40',len:[9]},
+  {iso:'VN',name:'Vietnam',flag:'🇻🇳',dial:'+84',len:[9,10]},
+  {iso:'LK',name:'Sri Lanka',flag:'🇱🇰',dial:'+94',len:[9]},
+  {iso:'NP',name:'Nepal',flag:'🇳🇵',dial:'+977',len:[10]},
+  {iso:'MM',name:'Myanmar',flag:'🇲🇲',dial:'+95',len:[8,9,10]},
+  {iso:'KZ',name:'Kazakhstan',flag:'🇰🇿',dial:'+7',len:[10]},
+  {iso:'MX',name:'Mexico',flag:'🇲🇽',dial:'+52',len:[10]},
+];
+
+let selectedCountry = COUNTRIES.find(c => c.iso === 'IN');
+
+function renderCountryList(filter='') {
+  const list = document.getElementById('country-list');
+  const fl = filter.toLowerCase();
+  const filtered = fl
+    ? COUNTRIES.filter(c => c.name.toLowerCase().includes(fl) || c.dial.includes(fl))
+    : COUNTRIES;
+  list.innerHTML = filtered.map(c => `
+    <div class="country-item ${c.iso===selectedCountry.iso?'selected':''}" data-iso="${c.iso}">
+      <span class="ci-flag">${c.flag}</span>
+      <span class="ci-name">${c.name}</span>
+      <span class="ci-code">${c.dial}</span>
+    </div>
+  `).join('');
+  list.querySelectorAll('.country-item').forEach(el => {
+    el.addEventListener('click', () => selectCountry(el.dataset.iso));
+  });
+}
+
+function selectCountry(iso) {
+  const c = COUNTRIES.find(x => x.iso===iso);
+  if (!c) return;
+  selectedCountry = c;
+  document.getElementById('sel-flag').textContent   = c.flag;
+  document.getElementById('sel-dial').textContent   = c.dial;
+  document.getElementById('country_code').value     = c.dial;
+  document.getElementById('country_iso').value      = c.iso;
+  // Update phone input maxlength & placeholder
+  const maxLen = Math.max(...c.len);
+  const phoneInput = document.getElementById('id_phone');
+  phoneInput.maxLength = maxLen;
+  phoneInput.placeholder = '0'.repeat(maxLen);
+  closeDropdown();
+  updateContact();
+  validatePhone();
+}
+
+function openDropdown() {
+  document.getElementById('country-dropdown').classList.add('open');
+  document.getElementById('country-search').focus();
+}
+function closeDropdown() {
+  document.getElementById('country-dropdown').classList.remove('open');
+  document.getElementById('country-search').value = '';
+  renderCountryList('');
+}
+
+document.getElementById('country-trigger').addEventListener('click', function(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('country-dropdown');
+  dd.classList.contains('open') ? closeDropdown() : openDropdown();
+});
+
+document.getElementById('country-search').addEventListener('input', function() {
+  renderCountryList(this.value);
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.country-select-wrap')) closeDropdown();
+});
+
+renderCountryList();
+// Update phone input for default country
+(function(){
+  const maxLen = Math.max(...selectedCountry.len);
+  const phoneInput = document.getElementById('id_phone');
+  phoneInput.maxLength = maxLen;
+  phoneInput.placeholder = '0'.repeat(maxLen);
+})();
+
+function updateContact() {
+  const phone = document.getElementById('id_phone').value.replace(/\D/g,'');
+  document.getElementById('id_contact').value = selectedCountry.dial + phone;
+}
+
+/* ═══════════════════════════════════════════════════
+   PASSWORD SHOW / HIDE
+═══════════════════════════════════════════════════ */
+function setupToggle(btnId, inputId, eyeId) {
+  document.getElementById(btnId).addEventListener('click', function() {
+    const inp = document.getElementById(inputId);
+    const eye = document.getElementById(eyeId);
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      eye.textContent = '🙈';
+    } else {
+      inp.type = 'password';
+      eye.textContent = '👁️';
+    }
+  });
+}
+setupToggle('pw-toggle-1', 'id_password', 'pw-eye-1');
+setupToggle('pw-toggle-2', 'id_confirm',  'pw-eye-2');
+
+/* ═══════════════════════════════════════════════════
+   PASSWORD VALIDATION
+═══════════════════════════════════════════════════ */
+function checkReq(id, met) {
+  const el = document.getElementById(id);
+  el.classList.toggle('met', met);
+  el.classList.toggle('unmet', !met);
+}
+
+document.getElementById('id_password').addEventListener('input', function() {
+  const v = this.value;
+  const wrap = document.getElementById('pw-strength-wrap');
+  if (v.length > 0) wrap.style.display = 'block'; else wrap.style.display = 'none';
+
+  const hasLen     = v.length >= 8;
+  const hasLetter  = /[A-Za-z]/.test(v);
+  const hasNum     = /[0-9]/.test(v);
+  const hasSpecial = /[^A-Za-z0-9]/.test(v);
+
+  checkReq('req-len',     hasLen);
+  checkReq('req-letter',  hasLetter);
+  checkReq('req-num',     hasNum);
+  checkReq('req-special', hasSpecial);
+
+  // Strength fill
+  const score = [hasLen, hasLetter, hasNum, hasSpecial].filter(Boolean).length;
+  const fills = ['0%','25%','50%','75%','100%'];
+  const colors= ['transparent','#fb7185','#fbbf24','#38bdf8','#34d399'];
+  const fill = document.getElementById('pw-strength-fill');
+  fill.style.width = fills[score];
+  fill.style.background = colors[score];
+
+  // Update confirm check
+  checkConfirm();
+
+  // Clear server errors
+  document.getElementById('pw-err') && (document.getElementById('pw-err').style.display='none');
+});
+
+function checkConfirm() {
+  const pw  = document.getElementById('id_password').value;
+  const cfm = document.getElementById('id_confirm').value;
+  const err = document.getElementById('confirm-err');
+  const ok  = document.getElementById('confirm-ok');
+  if (!cfm) { err.style.display='none'; ok.style.display='none'; return; }
+  if (pw === cfm) {
+    err.style.display='none';
+    ok.style.display='flex';
+    document.getElementById('id_confirm').classList.remove('error');
+    document.getElementById('id_confirm').classList.add('success');
+  } else {
+    err.textContent='⚠️ Passwords do not match.';
+    err.style.display='flex';
+    ok.style.display='none';
+    document.getElementById('id_confirm').classList.add('error');
+    document.getElementById('id_confirm').classList.remove('success');
+  }
+}
+document.getElementById('id_confirm').addEventListener('input', checkConfirm);
+
+/* ═══════════════════════════════════════════════════
+   USERNAME LIVE CHECK
+═══════════════════════════════════════════════════ */
+let usernameTimer;
+document.getElementById('id_username').addEventListener('input', function() {
+  const val = this.value.trim();
+  const errEl = document.getElementById('username-err');
+  const okEl  = document.getElementById('username-ok');
+  errEl.style.display='none';
+  okEl.style.display='none';
+  clearTimeout(usernameTimer);
+  if (!val) return;
+  usernameTimer = setTimeout(() => {
+    fetch(`/api/check-username/?username=${encodeURIComponent(val)}`)
+      .then(r=>r.json()).then(d=>{
+        if (d.taken) {
+          errEl.textContent='⚠️ This username is already taken by another user.';
+          errEl.style.display='flex';
+          document.getElementById('id_username').classList.add('error');
+          document.getElementById('id_username').classList.remove('success');
+        } else {
+          okEl.style.display='flex';
+          errEl.style.display='none';
+          document.getElementById('id_username').classList.remove('error');
+          document.getElementById('id_username').classList.add('success');
+        }
+      }).catch(()=>{});
+  }, 500);
+});
+
+/* ═══════════════════════════════════════════════════
+   EMAIL LIVE CHECK
+═══════════════════════════════════════════════════ */
+let emailTimer;
+document.getElementById('id_email').addEventListener('input', function() {
+  const val = this.value.trim();
+  const errEl = document.getElementById('email-err');
+  const okEl  = document.getElementById('email-ok');
+  errEl.style.display='none';
+  okEl.style.display='none';
+  clearTimeout(emailTimer);
+  if (!val) return;
+  emailTimer = setTimeout(() => {
+    fetch(`/api/check-email/?email=${encodeURIComponent(val)}`)
+      .then(r=>r.json()).then(d=>{
+        if (d.invalid) {
+          errEl.textContent='⚠️ ' + d.msg;
+          errEl.style.display='flex';
+          document.getElementById('id_email').classList.add('error');
+          document.getElementById('id_email').classList.remove('success');
+        } else if (d.taken) {
+          errEl.textContent='⚠️ This email is already registered.';
+          errEl.style.display='flex';
+          document.getElementById('id_email').classList.add('error');
+          document.getElementById('id_email').classList.remove('success');
+        } else {
+          okEl.style.display='flex';
+          errEl.style.display='none';
+          document.getElementById('id_email').classList.remove('error');
+          document.getElementById('id_email').classList.add('success');
+        }
+      }).catch(()=>{});
+  }, 600);
+});
+
+/* ═══════════════════════════════════════════════════
+   PHONE LIVE VALIDATION
+═══════════════════════════════════════════════════ */
+let phoneTimer;
+
+function validatePhone() {
+  const digits = document.getElementById('id_phone').value.replace(/\D/g,'');
+  const errEl = document.getElementById('phone-err');
+  const okEl  = document.getElementById('phone-ok');
+  errEl.style.display='none';
+  okEl.style.display='none';
+  clearTimeout(phoneTimer);
+  if (!digits) return;
+
+  const validLens = selectedCountry.len;
+  if (!validLens.includes(digits.length)) {
+    const expected = validLens.join(' or ');
+    errEl.textContent=`⚠️ Phone number for ${selectedCountry.name} must be ${expected} digit(s).`;
+    errEl.style.display='flex';
+    document.getElementById('id_phone').classList.add('error');
+    document.getElementById('id_phone').classList.remove('success');
+    return;
+  }
+
+  const fullNumber = selectedCountry.dial + digits;
+  phoneTimer = setTimeout(() => {
+    fetch(`/api/check-phone/?phone=${encodeURIComponent(fullNumber)}`)
+      .then(r=>r.json()).then(d=>{
+        if (d.taken) {
+          errEl.textContent='⚠️ This phone number is already registered. Please choose another.';
+          errEl.style.display='flex';
+          document.getElementById('id_phone').classList.add('error');
+          document.getElementById('id_phone').classList.remove('success');
+        } else {
+          okEl.style.display='flex';
+          errEl.style.display='none';
+          document.getElementById('id_phone').classList.remove('error');
+          document.getElementById('id_phone').classList.add('success');
+        }
+      }).catch(()=>{});
+  }, 600);
+}
+
+document.getElementById('id_phone').addEventListener('input', function() {
+  // Allow only digits
+  this.value = this.value.replace(/[^0-9]/g,'');
+  updateContact();
+  validatePhone();
+});
+
+/* ═══════════════════════════════════════════════════
+   FORM SUBMIT — pre-validation
+═══════════════════════════════════════════════════ */
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  updateContact();
+  // Basic client-side check
+  const pw  = document.getElementById('id_password').value;
+  const cfm = document.getElementById('id_confirm').value;
+  const hasLen     = pw.length >= 8;
+  const hasLetter  = /[A-Za-z]/.test(pw);
+  const hasNum     = /[0-9]/.test(pw);
+  const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+
+  if (!hasLen || !hasLetter || !hasNum || !hasSpecial) {
+    e.preventDefault();
+    document.getElementById('pw-strength-wrap').style.display = 'block';
+    document.getElementById('id_password').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  if (pw !== cfm) {
+    e.preventDefault();
+    document.getElementById('confirm-err').textContent='⚠️ Passwords do not match.';
+    document.getElementById('confirm-err').style.display='flex';
+    return;
+  }
+  // Show loading
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Creating account…';
+});
+</script>
+{% endblock %}

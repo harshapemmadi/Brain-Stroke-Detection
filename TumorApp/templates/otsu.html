@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}OTSU Segmentation – NeuroScan Pro{% endblock %}
+{% block extra_style %}
+.seg-header {
+  background: linear-gradient(135deg,rgba(56,189,248,.06),rgba(45,212,191,.04));
+  border-bottom:1px solid var(--border); padding:2rem 0;
+}
+.seg-title { font-family:var(--font-display);font-size:1.6rem;font-weight:800;letter-spacing:-.03em; }
+.upload-panel { max-width:640px; margin: 0 auto; }
+.results-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem; }
+@media(max-width:900px){ .results-grid { grid-template-columns:1fr; } }
+.param-row { display:flex;align-items:center;justify-content:space-between;
+             padding:.6rem 0;border-bottom:1px solid var(--border); }
+.param-row:last-child { border-bottom:none; }
+.param-name { font-size:13px;color:var(--text2); }
+.param-val  { font-family:var(--font-mono);font-size:13px;color:var(--cyan); }
+.tumor-badge-big {
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--font-display);font-weight:700;font-size:1.1rem;
+  padding:.75rem 1.5rem;border-radius:12px;
+}
+.tumor-yes { background:rgba(251,113,133,.12);color:var(--rose);border:1px solid rgba(251,113,133,.25); }
+.tumor-no  { background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.25); }
+{% endblock %}
+
+{% block content %}
+<div class="seg-header">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <span class="label-tag">Segmentation</span>
+        <div class="seg-title">🔵 OTSU Adaptive Segmentation</div>
+        <div style="color:var(--text2);font-size:13.5px;margin-top:.25rem;">All thresholds computed from your image's statistics — zero hardcoded values</div>
+      </div>
+      <a href="{% url 'dashboard' %}" class="btn btn-outline btn-sm">← Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<div style="padding:2.5rem 0;">
+<div class="container">
+
+{% if error %}
+<div class="alert alert-error">⚠️ {{ error }}</div>
+{% endif %}
+
+{% if not orig_b64 %}
+<!-- Upload form -->
+<div class="upload-panel animate-fadeup">
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <div class="card-icon cyan">ℹ️</div>
+      <div>
+        <div class="card-title">How OTSU Works Here</div>
+        <div class="card-meta">ML-guided adaptive pipeline</div>
+      </div>
+    </div>
+    <ol style="padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem;font-size:13.5px;color:var(--text2);">
+      <li>Image features extracted (25+ statistical metrics)</li>
+      <li>Gaussian blur kernel size computed from image std deviation</li>
+      <li>OTSU threshold auto-calculated — no manual tuning</li>
+      <li>Morphological kernel derived from image dimensions</li>
+      <li>Tumor probability predicted by trained RandomForest model</li>
+    </ol>
+  </div>
+
+  <form method="POST" action="{% url 'otsu_action' %}" enctype="multipart/form-data" data-loading>
+    {% csrf_token %}
+    <div class="card">
+      <label for="otsu-file" style="cursor:pointer;">
+        <div class="upload-zone" id="otsu-drop">
+          <div class="upload-icon">🔬</div>
+          <div class="upload-title">Drop MRI / CT scan here</div>
+          <div class="upload-sub" style="margin-top:.25rem;">or click to browse · PNG, JPG, TIFF supported</div>
+          <input type="file" name="image" id="otsu-file" accept="image/*" required
+                 style="display:none;" />
+        </div>
+      </label>
+      <div style="margin-top:1.5rem;">
+        <button type="submit" class="btn btn-primary btn-full">
+          🔵 Run OTSU Segmentation
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% else %}
+<!-- Results -->
+<div class="animate-fadeup" style="margin-bottom:1.5rem;">
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+    <span class="badge badge-green">✅ Segmentation Complete</span>
+    {% if has_tumor %}
+    <div class="tumor-badge-big tumor-yes">🔴 Tumor Detected ({{ probability }}%)</div>
+    {% else %}
+    <div class="tumor-badge-big tumor-no">✅ No Tumor ({{ probability }}% probability)</div>
+    {% endif %}
+    <span class="badge badge-cyan mono">Accuracy: {{ accuracy }}%</span>
+  </div>
+
+  <!-- Images -->
+  <div class="results-grid" style="margin-bottom:2rem;">
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span style="margin-left:4px;">original.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ orig_b64 }}" alt="Original" />
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.5rem;font-family:var(--font-mono);">Original Scan</div>
+    </div>
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span style="margin-left:4px;">otsu_segmented.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ seg_b64 }}" alt="OTSU Segmented" />
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.5rem;font-family:var(--font-mono);">OTSU Segmented</div>
+    </div>
+    <div>
+      <div class="img-panel">
+        <div class="img-panel-header">
+          <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+          <span style="margin-left:4px;">overlay.png</span>
+        </div>
+        <img src="data:image/png;base64,{{ overlay_b64 }}" alt="Overlay" />
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.5rem;font-family:var(--font-mono);">Contour Overlay</div>
+    </div>
+  </div>
+
+  <!-- Accuracy meter -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header">
+      <div class="card-icon cyan">🎯</div>
+      <div><div class="card-title">Segmentation Accuracy</div><div class="card-meta">Computed from edge alignment + region compactness + intensity homogeneity</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+          <span style="font-size:13px;color:var(--text2);">OTSU Accuracy</span>
+          <span class="mono text-cyan">{{ accuracy }}%</span>
+        </div>
+        <div class="meter-track" style="height:10px;">
+          <div class="meter-fill" id="acc-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div class="stat-value text-cyan">{{ accuracy }}%</div>
+        <div class="stat-label">Accuracy Score</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adaptive parameters -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon teal">⚙️</div>
+        <div><div class="card-title">Adaptive Parameters</div><div class="card-meta">Computed from this image — not hardcoded</div></div>
+      </div>
+      <div class="param-row"><span class="param-name">OTSU Threshold (auto)</span><span class="param-val">{{ otsu_val }}</span></div>
+      <div class="param-row"><span class="param-name">Blur Kernel Size</span><span class="param-val">{{ blur_ksize }}×{{ blur_ksize }}</span></div>
+      <div class="param-row"><span class="param-name">Morpho Kernel</span><span class="param-val">{{ morph_w }}×{{ morph_h }}</span></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon violet">📐</div>
+        <div><div class="card-title">Image Statistics</div><div class="card-meta">Extracted during analysis</div></div>
+      </div>
+      <div class="param-row"><span class="param-name">Mean Intensity</span><span class="param-val">{{ img_mean }}</span></div>
+      <div class="param-row"><span class="param-name">Std Deviation</span><span class="param-val">{{ img_std }}</span></div>
+      <div class="param-row"><span class="param-name">Histogram Entropy</span><span class="param-val">{{ img_entropy }}</span></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;margin-top:1.5rem;flex-wrap:wrap;">
+    <a href="{% url 'otsu' %}" class="btn btn-outline">🔄 Analyze Another Scan</a>
+    <a href="{% url 'dbim' %}" class="btn btn-violet">🔴 Run DBIM on New Scan →</a>
+    <a href="{% url 'accuracy' %}" class="btn btn-outline">📊 View Accuracy Report</a>
+  </div>
+</div>
+{% endif %}
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+{% if orig_b64 %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const bar = document.getElementById('acc-bar');
+    if (bar) bar.style.width = '{{ accuracy }}%';
+  }, 300);
+});
+</script>
+{% endif %}
+{% endblock %}

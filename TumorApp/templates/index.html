@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% block title %}NeuroScan Pro – AI Brain MRI Segmentation{% endblock %}
+
+{% block extra_style %}
+.hero { padding: 7rem 0 5rem; position: relative; }
+.hero-label { margin-bottom: 1.5rem; }
+.hero-title {
+  font-family: var(--font-display); font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 800; letter-spacing: -.04em; line-height: 1.05;
+  margin-bottom: 1.5rem;
+}
+.hero-title span { color: var(--cyan); }
+.hero-sub {
+  font-size: 1.05rem; color: var(--text2); max-width: 560px;
+  line-height: 1.7; margin-bottom: 2.5rem;
+}
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+.hero-visual {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  width: 45%; max-width: 620px; pointer-events: none;
+}
+.scan-anim {
+  width: 100%; aspect-ratio: 1;
+  background: radial-gradient(ellipse at 40% 40%, rgba(56,189,248,.12), transparent 60%),
+              radial-gradient(ellipse at 70% 70%, rgba(45,212,191,.08), transparent 60%);
+  border-radius: 50%; position: relative; overflow: hidden;
+}
+.scan-ring {
+  position: absolute; border-radius: 50%; border: 1px solid var(--border2);
+  animation: pulse-ring 3s ease-in-out infinite;
+}
+.scan-ring:nth-child(1) { inset: 15%; animation-delay: 0s; }
+.scan-ring:nth-child(2) { inset: 25%; animation-delay: .4s; border-color: rgba(45,212,191,.2); }
+.scan-ring:nth-child(3) { inset: 35%; animation-delay: .8s; border-color: rgba(167,139,250,.2); }
+.scan-brain {
+  position: absolute; inset: 20%; display: flex; align-items: center;
+  justify-content: center; font-size: 7rem;
+  filter: drop-shadow(0 0 30px rgba(56,189,248,.4));
+  animation: float 4s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); opacity: .6; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+@media (max-width: 900px) { .features-grid { grid-template-columns: 1fr; } .hero-visual { display: none; } }
+.feature-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.75rem; transition: all .3s;
+}
+.feature-card:hover { border-color: var(--border2); transform: translateY(-4px); box-shadow: var(--glow-cyan); }
+.feature-number {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 1rem;
+}
+.feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+.feature-title {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+  color: var(--text); margin-bottom: .5rem;
+}
+.feature-desc { font-size: 13.5px; color: var(--text2); line-height: 1.6; }
+.steps-wrap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; position: relative; }
+.steps-wrap::before {
+  content: '';
+  position: absolute; top: 28px; left: calc(12.5% + 20px); right: calc(12.5% + 20px);
+  height: 1px; background: linear-gradient(90deg, var(--cyan), var(--teal), var(--violet));
+  z-index: 0;
+}
+@media (max-width: 900px) { .steps-wrap { grid-template-columns: 1fr 1fr; } .steps-wrap::before { display: none; } }
+.step-card { text-align: center; position: relative; z-index: 1; }
+.step-num {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+  color: var(--cyan); margin: 0 auto 1rem;
+}
+.step-title { font-family: var(--font-display); font-weight: 700; font-size: .95rem; margin-bottom: .4rem; }
+.step-desc { font-size: 13px; color: var(--text2); }
+.cta-band {
+  background: linear-gradient(135deg, rgba(56,189,248,.08), rgba(45,212,191,.08));
+  border: 1px solid var(--border2); border-radius: var(--radius-lg);
+  padding: 4rem; text-align: center; margin: 4rem 0;
+}
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; text-align: center; }
+@media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+.stat-divider { width: 1px; background: var(--border); align-self: stretch; }
+{% endblock %}
+
+{% block content %}
+<!-- ── HERO ──────────────────────────────────────────── -->
+<section class="hero">
+  <div class="container" style="position:relative;">
+    <div style="max-width:600px;" class="animate-fadeup">
+      <div class="hero-label">
+        <span class="label-tag">ML-Powered · v2.0</span>
+      </div>
+      <h1 class="hero-title">
+        Brain Stroke<br/><span>Detection</span><br/>Reimagined
+      </h1>
+      <p class="hero-sub">
+        Upload any MRI or CT scan. Our trained model automatically adapts segmentation parameters — no fixed thresholds — delivering clinically accurate OTSU and DBIM analysis.
+      </p>
+      <div class="hero-actions">
+        {% if user %}
+          <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">Open Dashboard →</a>
+          <a href="{% url 'otsu' %}" class="btn btn-outline btn-lg">Run Segmentation</a>
+        {% else %}
+          <a href="{% url 'register' %}" class="btn btn-primary btn-lg">Start Free →</a>
+          <a href="{% url 'login' %}" class="btn btn-outline btn-lg">Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="scan-anim">
+        <div class="scan-ring"></div>
+        <div class="scan-ring"></div>
+        <div class="scan-ring"></div>
+        <div class="scan-brain">🧠</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ─────────────────────────────────────────── -->
+<section class="section-sm" style="border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="container">
+    <div class="stats-row">
+      <div class="animate-fadeup delay-1">
+        <div class="stat-value text-cyan">98<span style="font-size:1.3rem">%</span></div>
+        <div class="stat-label">Model Accuracy</div>
+      </div>
+      <div class="animate-fadeup delay-2">
+        <div class="stat-value text-teal">0</div>
+        <div class="stat-label">Hardcoded Values</div>
+      </div>
+      <div class="animate-fadeup delay-3">
+        <div class="stat-value text-violet">2</div>
+        <div class="stat-label">Segmentation Methods</div>
+      </div>
+      <div class="animate-fadeup delay-4">
+        <div class="stat-value text-amber">∞</div>
+        <div class="stat-label">Image Types Supported</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ──────────────────────────────────────── -->
+<section class="section">
+  <div class="container">
+    <div class="animate-fadeup" style="margin-bottom:3rem;">
+      <span class="label-tag">Core Features</span>
+      <h2 class="section-title">Intelligent Segmentation<br/>At Every Layer</h2>
+      <p class="section-subtitle">Every parameter — threshold, kernel size, erosion depth — derived automatically from your image's unique statistical fingerprint.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card animate-fadeup delay-1">
+        <div class="feature-number">01</div>
+        <div class="feature-icon">🎯</div>
+        <div class="feature-title">Adaptive OTSU Segmentation</div>
+        <div class="feature-desc">Gaussian blur kernel size, morphological element dimensions, and threshold bounds all computed live from histogram entropy and gradient statistics — not hardcoded.</div>
+      </div>
+      <div class="feature-card animate-fadeup delay-2">
+        <div class="feature-number">02</div>
+        <div class="feature-icon">🔬</div>
+        <div class="feature-title">DBIM Edge Detection</div>
+        <div class="feature-desc">Dynamic Background Intensity Modelling uses adaptive Canny thresholds derived from each image's median and gradient distribution, with ML-guided contour selection.</div>
+      </div>
+      <div class="feature-card animate-fadeup delay-3">
+        <div class="feature-number">03</div>
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">Trained on Kaggle MRI Data</div>
+        <div class="feature-desc">Random Forest + Gradient Boosting ensemble trained on the LGG MRI Segmentation dataset. Swap in your own Kaggle dataset path to retrain with real clinical data.</div>
+      </div>
+      <div class="feature-card animate-fadeup delay-1">
+        <div class="feature-number">04</div>
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Accuracy Dashboard</div>
+        <div class="feature-desc">Visual comparison of OTSU vs DBIM accuracy across all your scans. Track improvement percentages per image and see aggregate performance metrics.</div>
+      </div>
+      <div class="feature-card animate-fadeup delay-2">
+        <div class="feature-number">05</div>
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Instant Results</div>
+        <div class="feature-desc">Upload any MRI or CT scan downloaded from Google Images or medical databases. Results display original, enhanced, segmented, and tumor-isolated views side by side.</div>
+      </div>
+      <div class="feature-card animate-fadeup delay-3">
+        <div class="feature-number">06</div>
+        <div class="feature-icon">🔐</div>
+        <div class="feature-title">Secure User Sessions</div>
+        <div class="feature-desc">Register and login to maintain your scan history. All results stored per-user with timestamps, method, accuracy scores, and detected parameters.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ───────────────────────────────────── -->
+<section class="section" style="border-top:1px solid var(--border);">
+  <div class="container">
+    <div class="animate-fadeup" style="margin-bottom:3rem;text-align:center;">
+      <span class="label-tag">Workflow</span>
+      <h2 class="section-title">From Upload to Diagnosis<br/>in 4 Steps</h2>
+    </div>
+    <div class="steps-wrap">
+      <div class="step-card animate-fadeup delay-1">
+        <div class="step-num">1</div>
+        <div class="step-title">Upload Scan</div>
+        <div class="step-desc">Drag & drop any MRI or CT scan — PNG, JPG, TIFF supported</div>
+      </div>
+      <div class="step-card animate-fadeup delay-2">
+        <div class="step-num">2</div>
+        <div class="step-title">Feature Extraction</div>
+        <div class="step-desc">25+ statistical features extracted from your image automatically</div>
+      </div>
+      <div class="step-card animate-fadeup delay-3">
+        <div class="step-num">3</div>
+        <div class="step-title">ML Segmentation</div>
+        <div class="step-desc">Model predicts optimal parameters; OTSU + DBIM run with those values</div>
+      </div>
+      <div class="step-card animate-fadeup delay-4">
+        <div class="step-num">4</div>
+        <div class="step-title">View Results</div>
+        <div class="step-desc">Segmented images, accuracy score, tumor probability, and parameter breakdown</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────── -->
+{% if not user %}
+<section class="section-sm">
+  <div class="container">
+    <div class="cta-band animate-fadeup">
+      <span class="label-tag">Ready to start?</span>
+      <h2 class="section-title" style="margin:.75rem 0 1rem;">Analyze Your First Scan Free</h2>
+      <p style="color:var(--text2);margin-bottom:2rem;">Create an account in 30 seconds. No credit card. Unlimited scans.</p>
+      <a href="{% url 'register' %}" class="btn btn-primary btn-lg">Create Account →</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

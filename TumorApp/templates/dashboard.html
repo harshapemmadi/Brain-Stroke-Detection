@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard – NeuroScan Pro{% endblock %}
+{% block extra_style %}
+.dash-header {
+  background: linear-gradient(135deg, rgba(56,189,248,.06), rgba(45,212,191,.04));
+  border-bottom: 1px solid var(--border); padding: 2.5rem 0;
+}
+.dash-welcome { font-family:var(--font-display); font-size:1.8rem; font-weight:800; letter-spacing:-.03em; }
+.dash-welcome span { color: var(--cyan); }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+@media(max-width:1000px){ .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+@media(max-width:600px){ .kpi-grid { grid-template-columns: 1fr; } }
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem; transition: all .3s;
+}
+.kpi-card:hover { border-color: var(--border2); box-shadow: var(--glow-cyan); }
+.kpi-icon { font-size: 1.75rem; margin-bottom: .75rem; }
+.kpi-val {
+  font-family: var(--font-display); font-size: 2.25rem;
+  font-weight: 800; letter-spacing: -.04em; line-height: 1;
+}
+.kpi-label { font-size:12px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-family:var(--font-mono); margin-top:6px; }
+.action-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+@media(max-width:900px){ .action-cards { grid-template-columns: 1fr; } }
+.action-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 2rem; text-align:center;
+  text-decoration: none; transition: all .3s; display: block;
+}
+.action-card:hover { transform: translateY(-4px); border-color: var(--border2); }
+.action-card.cyan:hover  { box-shadow: var(--glow-cyan); }
+.action-card.violet:hover { box-shadow: var(--glow-violet); }
+.action-card.teal:hover  { box-shadow: var(--glow-teal); }
+.action-emoji { font-size: 3rem; margin-bottom: 1rem; }
+.action-title { font-family:var(--font-display); font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:.5rem; }
+.action-desc { font-size:13px; color:var(--text2); }
+.section-heading {
+  font-family: var(--font-display); font-size: 1.15rem; font-weight: 700;
+  letter-spacing: -.02em; margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: 10px;
+}
+.empty-state {
+  text-align: center; padding: 3rem; color: var(--text3);
+  font-family: var(--font-mono); font-size: 13px;
+}
+.engine-alert {
+  background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.2);
+  border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+  font-size: 13.5px; color: var(--amber);
+}
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dash-header">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <div class="dash-welcome">Hello, <span>{{ user.username }}</span> 👋</div>
+        <div style="color:var(--text2);font-size:14px;margin-top:.25rem;">Brain MRI Segmentation Dashboard</div>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+        <a href="{% url 'otsu' %}" class="btn btn-outline btn-sm">🔵 Run OTSU</a>
+        <a href="{% url 'dbim' %}" class="btn btn-primary btn-sm">🔴 Run DBIM</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="padding:2.5rem 0;">
+<div class="container">
+
+{% if not engine_ok %}
+<div class="engine-alert">
+  ⚠️ <strong>Model not trained yet.</strong>
+  Run <code style="background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;">python ml_model/train_model.py</code> to train the model before running segmentation.
+</div>
+{% endif %}
+
+<!-- KPIs -->
+<div class="kpi-grid" style="margin-bottom:2.5rem;">
+  <div class="kpi-card animate-fadeup delay-1">
+    <div class="kpi-icon">📊</div>
+    <div class="kpi-val text-cyan">{{ total }}</div>
+    <div class="kpi-label">Total Scans</div>
+  </div>
+  <div class="kpi-card animate-fadeup delay-2">
+    <div class="kpi-icon">🎯</div>
+    <div class="kpi-val text-teal">{{ avg_acc }}<span style="font-size:1.2rem;">%</span></div>
+    <div class="kpi-label">Avg Accuracy</div>
+  </div>
+  <div class="kpi-card animate-fadeup delay-3">
+    <div class="kpi-icon">🔴</div>
+    <div class="kpi-val text-rose">{{ tumor_cnt }}</div>
+    <div class="kpi-label">Tumor Detected</div>
+  </div>
+  <div class="kpi-card animate-fadeup delay-4">
+    <div class="kpi-icon">📈</div>
+    <div class="kpi-val text-violet">{{ avg_dbim }}<span style="font-size:1.2rem;">%</span></div>
+    <div class="kpi-label">DBIM Avg Acc.</div>
+  </div>
+</div>
+
+<!-- Accuracy bars -->
+<div class="card animate-fadeup" style="margin-bottom:2.5rem;">
+  <div class="card-header">
+    <div class="card-icon cyan">📉</div>
+    <div>
+      <div class="card-title">Method Comparison</div>
+      <div class="card-meta">OTSU vs DBIM average accuracy</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;">
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+        <span style="font-size:13px;color:var(--text2);">OTSU Segmentation</span>
+        <span class="mono" style="font-size:13px;color:var(--cyan);">{{ avg_otsu }}%</span>
+      </div>
+      <div class="meter-track"><div class="meter-fill" style="width:{{ avg_otsu }}%"></div></div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:.5rem;">
+        <span style="font-size:13px;color:var(--text2);">DBIM Segmentation</span>
+        <span class="mono" style="font-size:13px;color:var(--violet);">{{ avg_dbim }}%</span>
+      </div>
+      <div class="meter-track"><div class="meter-fill violet" style="width:{{ avg_dbim }}%"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick actions -->
+<div class="section-heading animate-fadeup">🚀 Quick Actions</div>
+<div class="action-cards" style="margin-bottom:2.5rem;">
+  <a href="{% url 'otsu' %}" class="action-card cyan animate-fadeup delay-1">
+    <div class="action-emoji">🔵</div>
+    <div class="action-title">OTSU Segmentation</div>
+    <div class="action-desc">Adaptive threshold-based region detection with ML-guided parameter selection</div>
+    <div style="margin-top:1rem;" class="btn btn-outline btn-sm" style="pointer-events:none;">Open →</div>
+  </a>
+  <a href="{% url 'dbim' %}" class="action-card violet animate-fadeup delay-2">
+    <div class="action-emoji">🔴</div>
+    <div class="action-title">DBIM Segmentation</div>
+    <div class="action-desc">Dynamic background intensity modelling with adaptive Canny edge detection</div>
+    <div style="margin-top:1rem;" class="btn btn-outline btn-sm" style="pointer-events:none;">Open →</div>
+  </a>
+  <a href="{% url 'accuracy' %}" class="action-card teal animate-fadeup delay-3">
+    <div class="action-emoji">📊</div>
+    <div class="action-title">Accuracy Report</div>
+    <div class="action-desc">Compare all your segmentation results with visual charts and metrics breakdown</div>
+    <div style="margin-top:1rem;" class="btn btn-outline btn-sm" style="pointer-events:none;">Open →</div>
+  </a>
+</div>
+
+<!-- Charts Section -->
+<div class="section-heading animate-fadeup">📊 Analytics Charts</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2.5rem;" class="animate-fadeup">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon cyan">📈</div>
+      <div><div class="card-title">Scan History</div><div class="card-meta">Total scans over time</div></div>
+    </div>
+    <canvas id="scanHistoryChart" height="180"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon violet">🔬</div>
+      <div><div class="card-title">OTSU vs DBIM</div><div class="card-meta">Accuracy comparison</div></div>
+    </div>
+    <canvas id="methodCompareChart" height="180"></canvas>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2.5rem;" class="animate-fadeup">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon rose">🔴</div>
+      <div><div class="card-title">Tumor Detection</div><div class="card-meta">Tumor vs No Tumor ratio</div></div>
+    </div>
+    <canvas id="tumorRatioChart" height="180"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon green">🎯</div>
+      <div><div class="card-title">Accuracy Distribution</div><div class="card-meta">Per scan accuracy spread</div></div>
+    </div>
+    <canvas id="accDistChart" height="180"></canvas>
+  </div>
+</div>
+
+<!-- Recent results -->
+<div class="section-heading animate-fadeup">🕑 Recent Scans</div>
+{% if results %}
+<div class="table-wrap animate-fadeup">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Image</th>
+        <th>Method</th>
+        <th>Accuracy</th>
+        <th>Probability</th>
+        <th>Tumor</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td class="text-faint mono">{{ forloop.counter }}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.image_name|default:"—" }}</td>
+        <td>
+          {% if r.method == 'OTSU' %}
+          <span class="badge badge-cyan">OTSU</span>
+          {% else %}
+          <span class="badge badge-violet">DBIM</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="meter-track" style="width:80px;"><div class="meter-fill" style="width:{{ r.accuracy|floatformat:0 }}0%"></div></div>
+            <span class="mono text-cyan" style="font-size:12px;">{{ r.accuracy|floatformat:2 }}</span>
+          </div>
+        </td>
+        <td class="mono" style="color:var(--text2);">{{ r.probability|floatformat:2 }}</td>
+        <td>
+          {% if r.has_tumor %}
+          <span class="badge badge-rose">🔴 Yes</span>
+          {% else %}
+          <span class="badge badge-green">✅ No</span>
+          {% endif %}
+        </td>
+        <td class="text-faint" style="font-size:12px;">{{ r.uploaded_at|date:"d M Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card animate-fadeup">
+  <div class="empty-state">
+    <div style="font-size:3rem;margin-bottom:1rem;">🧠</div>
+    No scans yet. Run your first segmentation above!
+  </div>
+</div>
+{% endif %}
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+const isDark = !document.body.classList.contains('light-mode');
+const gridColor = isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+const textColor = isDark ? '#94a3b8' : '#475569';
+const results = [{% for r in results %}{ method:"{{ r.method }}", acc:{{ r.accuracy|floatformat:4 }}, tumor:{{ r.has_tumor|yesno:"true,false" }}, date:"{{ r.uploaded_at|date:'d M' }}" },{% endfor %}];
+
+Chart.defaults.color = textColor;
+Chart.defaults.borderColor = gridColor;
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+// 1. Scan History Bar Chart
+const labels = results.map((r,i) => '#'+(i+1));
+const accs   = results.map(r => (r.acc*100).toFixed(1));
+new Chart(document.getElementById('scanHistoryChart'), {
+  type: 'bar',
+  data: {
+    labels: labels.slice(-10),
+    datasets: [{
+      label: 'Accuracy %',
+      data: accs.slice(-10),
+      backgroundColor: results.slice(-10).map(r => r.method === 'OTSU' ? 'rgba(56,189,248,.5)' : 'rgba(167,139,250,.5)'),
+      borderColor:     results.slice(-10).map(r => r.method === 'OTSU' ? '#38bdf8' : '#a78bfa'),
+      borderWidth: 1, borderRadius: 6,
+    }]
+  },
+  options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ min:60, max:100 } } }
+});
+
+// 2. OTSU vs DBIM Accuracy Comparison
+const otsuAcc = results.filter(r=>r.method==='OTSU').map(r=>(r.acc*100).toFixed(1));
+const dbimAcc = results.filter(r=>r.method==='DBIM').map(r=>(r.acc*100).toFixed(1));
+new Chart(document.getElementById('methodCompareChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Average Accuracy','Highest','Count'],
+    datasets: [
+      { label:'OTSU', backgroundColor:'rgba(56,189,248,.5)', borderColor:'#38bdf8', borderWidth:1, borderRadius:6,
+        data: [ otsuAcc.length ? (otsuAcc.reduce((a,b)=>+a+ +b,0)/otsuAcc.length).toFixed(1) : 0,
+                otsuAcc.length ? Math.max(...otsuAcc) : 0, otsuAcc.length ] },
+      { label:'DBIM', backgroundColor:'rgba(167,139,250,.5)', borderColor:'#a78bfa', borderWidth:1, borderRadius:6,
+        data: [ dbimAcc.length ? (dbimAcc.reduce((a,b)=>+a+ +b,0)/dbimAcc.length).toFixed(1) : 0,
+                dbimAcc.length ? Math.max(...dbimAcc) : 0, dbimAcc.length ] },
+    ]
+  },
+  options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+});
+
+// 3. Tumor vs No Tumor Doughnut
+const tumorCount   = results.filter(r=>r.tumor).length;
+const noTumorCount = results.length - tumorCount;
+new Chart(document.getElementById('tumorRatioChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Tumor Detected','No Tumor'],
+    datasets: [{ data:[tumorCount, noTumorCount],
+      backgroundColor:['rgba(251,113,133,.7)','rgba(52,211,153,.7)'],
+      borderColor:['#fb7185','#34d399'], borderWidth:2 }]
+  },
+  options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, cutout:'65%' }
+});
+
+// 4. Accuracy Distribution Line Chart
+new Chart(document.getElementById('accDistChart'), {
+  type: 'line',
+  data: {
+    labels: results.map((_,i)=>'#'+(i+1)),
+    datasets: [{
+      label:'Accuracy %', data: results.map(r=>(r.acc*100).toFixed(1)),
+      borderColor:'#2dd4bf', backgroundColor:'rgba(45,212,191,.08)',
+      pointBackgroundColor:'#2dd4bf', pointRadius:4, tension:.4, fill:true,
+    }]
+  },
+  options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ min:60, max:100 } } }
+});
+</script>
+{% endblock %}

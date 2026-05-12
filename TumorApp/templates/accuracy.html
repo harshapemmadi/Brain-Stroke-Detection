@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block title %}Accuracy Report – NeuroScan Pro{% endblock %}
+{% block extra_style %}
+.report-header {
+  background: linear-gradient(135deg,rgba(52,211,153,.06),rgba(56,189,248,.04));
+  border-bottom:1px solid var(--border); padding:2rem 0;
+}
+.chart-wrap {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+}
+canvas { max-height: 280px; }
+.compare-bar-row { display:flex;align-items:center;gap:1rem;margin-bottom:1rem; }
+.compare-label { font-size:13px;color:var(--text2);width:80px;flex-shrink:0; }
+.compare-track { flex:1;height:24px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative; }
+.compare-fill  { height:100%;border-radius:6px;transition:width 1s cubic-bezier(.4,0,.2,1); display:flex;align-items:center;justify-content:flex-end;padding-right:.5rem; }
+.compare-pct   { font-family:var(--font-mono);font-size:11.5px;color:white;font-weight:600; }
+.empty-msg { text-align:center;padding:3rem;color:var(--text3);font-family:var(--font-mono);font-size:13px; }
+{% endblock %}
+
+{% block content %}
+<div class="report-header">
+  <div class="container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <span class="label-tag">Analytics</span>
+        <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;letter-spacing:-.03em;">📊 Accuracy Report</div>
+        <div style="color:var(--text2);font-size:13.5px;margin-top:.25rem;">OTSU vs DBIM performance across all your scans</div>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+        <a href="{% url 'otsu' %}" class="btn btn-outline btn-sm">🔵 New OTSU</a>
+        <a href="{% url 'dbim' %}" class="btn btn-violet btn-sm">🔴 New DBIM</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="padding:2.5rem 0;">
+<div class="container">
+
+<!-- Summary KPIs -->
+<div class="grid-4" style="margin-bottom:2rem;">
+  <div class="card animate-fadeup delay-1">
+    <div class="kpi-icon" style="font-size:1.5rem;margin-bottom:.5rem;">🔢</div>
+    <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--cyan);">{{ total_scans }}</div>
+    <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);">Total Scans</div>
+  </div>
+  <div class="card animate-fadeup delay-2">
+    <div style="font-size:1.5rem;margin-bottom:.5rem;">🔵</div>
+    <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--cyan);">{{ avg_otsu_acc }}%</div>
+    <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);">OTSU Avg Acc.</div>
+  </div>
+  <div class="card animate-fadeup delay-3">
+    <div style="font-size:1.5rem;margin-bottom:.5rem;">🔴</div>
+    <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--violet);">{{ avg_dbim_acc }}%</div>
+    <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);">DBIM Avg Acc.</div>
+  </div>
+  <div class="card animate-fadeup delay-4">
+    <div style="font-size:1.5rem;margin-bottom:.5rem;">📈</div>
+    <div style="font-family:var(--font-display);font-size:2rem;font-weight:800;color:var(--green);">+{{ avg_improvement }}%</div>
+    <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);">Avg Improvement</div>
+  </div>
+</div>
+
+<!-- Method comparison bars -->
+<div class="card animate-fadeup" style="margin-bottom:2rem;">
+  <div class="card-header">
+    <div class="card-icon green">📊</div>
+    <div><div class="card-title">Method Performance Comparison</div><div class="card-meta">Average accuracy across all scans</div></div>
+  </div>
+  <div class="compare-bar-row">
+    <span class="compare-label">OTSU</span>
+    <div class="compare-track">
+      <div class="compare-fill" id="otsu-cmp" style="width:0%;background:linear-gradient(90deg,var(--cyan),var(--teal));">
+        <span class="compare-pct">{{ avg_otsu_acc }}%</span>
+      </div>
+    </div>
+  </div>
+  <div class="compare-bar-row">
+    <span class="compare-label">DBIM</span>
+    <div class="compare-track">
+      <div class="compare-fill" id="dbim-cmp" style="width:0%;background:linear-gradient(90deg,var(--violet),var(--cyan));">
+        <span class="compare-pct">{{ avg_dbim_acc }}%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="grid-2" style="margin-bottom:2rem;">
+  {% if otsu_list %}
+  <div class="chart-wrap animate-fadeup delay-1">
+    <div style="font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:1rem;">🔵 OTSU Accuracy Trend</div>
+    <canvas id="otsuChart"></canvas>
+  </div>
+  {% endif %}
+  {% if dbim_list %}
+  <div class="chart-wrap animate-fadeup delay-2">
+    <div style="font-family:var(--font-display);font-weight:700;font-size:1rem;margin-bottom:1rem;">🔴 DBIM Accuracy Trend</div>
+    <canvas id="dbimChart"></canvas>
+  </div>
+  {% endif %}
+</div>
+
+{% if not otsu_list and not dbim_list %}
+<div class="card animate-fadeup">
+  <div class="empty-msg">
+    <div style="font-size:3rem;margin-bottom:1rem;">📊</div>
+    No segmentation results yet.<br/>
+    Run OTSU or DBIM segmentation to see your accuracy report here.
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'otsu' %}" class="btn btn-outline">🔵 Run OTSU</a>
+      <a href="{% url 'dbim' %}" class="btn btn-violet">🔴 Run DBIM</a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- OTSU table -->
+{% if otsu_list %}
+<div style="margin-bottom:2rem;" class="animate-fadeup">
+  <div style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:1rem;">🔵 OTSU Results</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Image</th><th>Accuracy</th><th>Probability</th><th>Tumor</th><th>Date</th>
+      </tr></thead>
+      <tbody>
+        {% for r in otsu_list %}
+        <tr>
+          <td class="text-faint mono">{{ forloop.counter }}</td>
+          <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.image_name|default:"—" }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="meter-track" style="width:70px;"><div class="meter-fill" style="width:{{ r.accuracy|floatformat:0 }}0%"></div></div>
+              <span class="mono text-cyan" style="font-size:12px;">{{ r.accuracy|floatformat:3 }}</span>
+            </div>
+          </td>
+          <td class="mono" style="color:var(--text2);">{{ r.probability|floatformat:3 }}</td>
+          <td>{% if r.has_tumor %}<span class="badge badge-rose">🔴 Yes</span>{% else %}<span class="badge badge-green">✅ No</span>{% endif %}</td>
+          <td class="text-faint" style="font-size:12px;">{{ r.uploaded_at|date:"d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- DBIM table -->
+{% if dbim_list %}
+<div class="animate-fadeup">
+  <div style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:1rem;">🔴 DBIM Results</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Image</th><th>DBIM Acc.</th><th>Improvement</th><th>Probability</th><th>Tumor</th><th>Date</th>
+      </tr></thead>
+      <tbody>
+        {% for r in dbim_list %}
+        <tr>
+          <td class="text-faint mono">{{ forloop.counter }}</td>
+          <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.image_name|default:"—" }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="meter-track" style="width:70px;"><div class="meter-fill violet" style="width:{{ r.accuracy|floatformat:0 }}0%"></div></div>
+              <span class="mono text-violet" style="font-size:12px;">{{ r.accuracy|floatformat:3 }}</span>
+            </div>
+          </td>
+          <td>
+            {% if r.improvement %}
+              {% if r.improvement > 0 %}
+              <span class="badge badge-green">+{{ r.improvement|floatformat:2 }}</span>
+              {% else %}
+              <span class="badge badge-amber">{{ r.improvement|floatformat:2 }}</span>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="mono" style="color:var(--text2);">{{ r.probability|floatformat:3 }}</td>
+          <td>{% if r.has_tumor %}<span class="badge badge-rose">🔴 Yes</span>{% else %}<span class="badge badge-green">✅ No</span>{% endif %}</td>
+          <td class="text-faint" style="font-size:12px;">{{ r.uploaded_at|date:"d M Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const chartDefaults = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(13,21,36,.95)',
+      borderColor: 'rgba(56,189,248,.3)',
+      borderWidth: 1,
+      titleColor: '#94a3b8',
+      bodyColor: '#e2e8f0',
+      padding: 10,
+      callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(2)}%` }
+    }
+  },
+  scales: {
+    x: { grid: { color: 'rgba(56,189,248,.06)' }, ticks: { color: '#64748b', font: { family: 'DM Mono', size: 11 } } },
+    y: { grid: { color: 'rgba(56,189,248,.06)' }, ticks: { color: '#64748b', font: { family: 'DM Mono', size: 11 } }, min: 60, max: 100 }
+  }
+};
+
+{% if otsu_list %}
+const otsuData = {{ otsu_json|safe }};
+new Chart(document.getElementById('otsuChart'), {
+  type: 'line',
+  data: {
+    labels: otsuData.map(d => `#${d.x}`),
+    datasets: [{
+      data: otsuData.map(d => d.y),
+      borderColor: '#38bdf8',
+      backgroundColor: 'rgba(56,189,248,.08)',
+      pointBackgroundColor: '#38bdf8',
+      pointRadius: 4,
+      fill: true,
+      tension: 0.4,
+    }]
+  },
+  options: chartDefaults
+});
+{% endif %}
+
+{% if dbim_list %}
+const dbimData = {{ dbim_json|safe }};
+new Chart(document.getElementById('dbimChart'), {
+  type: 'line',
+  data: {
+    labels: dbimData.map(d => `#${d.x}`),
+    datasets: [{
+      data: dbimData.map(d => d.y),
+      borderColor: '#a78bfa',
+      backgroundColor: 'rgba(167,139,250,.08)',
+      pointBackgroundColor: '#a78bfa',
+      pointRadius: 4,
+      fill: true,
+      tension: 0.4,
+    }]
+  },
+  options: chartDefaults
+});
+{% endif %}
+
+// Animate comparison bars
+setTimeout(() => {
+  const oc = document.getElementById('otsu-cmp');
+  const dc = document.getElementById('dbim-cmp');
+  if (oc) oc.style.width = '{{ avg_otsu_acc }}%';
+  if (dc) dc.style.width = '{{ avg_dbim_acc }}%';
+}, 200);
+</script>
+{% endblock %}

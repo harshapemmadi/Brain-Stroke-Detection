@@ -1,0 +1,59 @@
+{
+  "feature_keys": [
+    "aspect_ratio",
+    "bright_ratio",
+    "gradient_mean",
+    "gradient_std",
+    "hist_energy",
+    "hist_entropy",
+    "kurtosis",
+    "laplacian_var",
+    "max",
+    "mean",
+    "median",
+    "min",
+    "morpho_close_diff",
+    "morpho_open_diff",
+    "otsu_threshold",
+    "p10",
+    "p25",
+    "p50",
+    "p75",
+    "p90",
+    "p95",
+    "range",
+    "skewness",
+    "std",
+    "texture_contrast"
+  ],
+  "accuracy": 0.8549618320610687,
+  "n_train": 3143,
+  "n_test": 786,
+  "param_stats": {
+    "tumor_otsu": {
+      "mean": 34.95630007283321,
+      "std": 8.363090362482566,
+      "p25": 29.0,
+      "p75": 40.0
+    },
+    "no_tumor_otsu": {
+      "mean": 35.50469483568075,
+      "std": 14.450484010255915,
+      "p25": 28.0,
+      "p75": 43.0
+    },
+    "tumor_grad": {
+      "mean": 28.9007155322211,
+      "std": 8.278499886508534,
+      "p25": 23.47307106101187,
+      "p75": 33.95989777722262
+    },
+    "no_tumor_grad": {
+      "mean": 26.879135622779682,
+      "std": 13.426906557430145,
+      "p25": 16.79004782862739,
+      "p75": 35.29020981037077
+    }
+  },
+  "model_type": "RandomForest"
+}
